@@ -10,14 +10,20 @@ It's as easy as
 `go get -u github.com/RiRa12621/travis-grabber`
 
 ## Usage
+
   -github-token string
+
         GitHub oAuth token used for authentication with GitHub to not instantly get rate limited
+
   -org string
+
         the org to scan (this is case sensitive)
+
   -travis-token string
-        Travis auth token you can get from https://travis-ci.org/account/preferences
+
+	Travis auth token you can get from https://travis-ci.org/account/preferences
 
 
 ## ToDo
 
-- Scan logs for Regex
+- [ ] Scan logs for Regex
