@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -62,6 +63,8 @@ func main() {
 	}
 	// Print what we got so we know what we're scanning
 	fmt.Println("Org to scan on Travis CI:", *orgPtr)
+	// define wg
+	var wg sync.WaitGroup
 	// Set context
 	ctx := context.Background()
 	// Authenticate
@@ -152,61 +155,68 @@ func main() {
 					JobIds     []int     `json:"job_ids,omitempty"`
 				} `json:"builds"`
 			}
-			for _, build := range buildInfo.Builds {
-				fmt.Println("Gathering Jobs")
-				fmt.Println("Build:", build.ID)
-				fmt.Println("RepositoryID:", build.RepositoryID)
-				// Request the logs for each build and dump them to files
-				for _, job := range build.JobIds {
-					// Print the Jobs IDs
-					fmt.Println("JobID:", strconv.Itoa(job))
-					logString := strconv.Itoa(job)
-					baseUrl := "https://api.travis-ci.org/v3/job/"
-					logsPostfix := "/log.txt"
-					logsUrl := baseUrl + logString + logsPostfix
-					// Let the user know from where we're getting the logs
-					fmt.Println("Requesting logs from:", logsUrl)
+			for index, build := range buildInfo.Builds {
+				go func(index int) {
+					defer wg.Done()
+					fmt.Println("Gathering Jobs")
+					fmt.Println("Build:", build.ID)
+					fmt.Println("RepositoryID:", build.RepositoryID)
+					// Request the logs for each build and dump them to files
+					for index, job := range build.JobIds {
+						go func(index int) {
+							defer wg.Done()
+							// Print the Jobs IDs
+							fmt.Println("JobID:", strconv.Itoa(job))
+							logString := strconv.Itoa(job)
+							baseUrl := "https://api.travis-ci.org/v3/job/"
+							logsPostfix := "/log.txt"
+							logsUrl := baseUrl + logString + logsPostfix
+							// Let the user know from where we're getting the logs
+							fmt.Println("Requesting logs from:", logsUrl)
 
-					// Request the Logs
-					tr := &http.Transport{
-						MaxIdleConns:       10,
-						IdleConnTimeout:    30 * time.Second,
-						DisableCompression: true,
-					}
-					logsClient := &http.Client{Transport: tr}
-					reqLogs, err := http.NewRequest("GET", logsUrl, nil)
-					if err != nil {
-						log.Fatal(err)
-					}
-					// Set the header to define the Travis API version
-					//reqLogs.Header.Add("Accept", "application/json; version=3")
-					reqLogs.Header.Add("Accept", "text/plain; version=3")
-					reqLogs.Header.Add("Authorization", "token "+*travisTokenPtr)
-					respLogs, err := logsClient.Do(reqLogs)
-					if err != nil {
-						log.Fatal(err)
-					}
-					// Better use a buffer this time as we have to otherwise copy the whole byte array to conver it to string
-					//bodyLogs, err := ioutil.ReadAll(respLogs.Body)
-					bodyBuffer := new(bytes.Buffer)
-					bodyBuffer.ReadFrom(respLogs.Body)
-					bodyString := bodyBuffer.String()
+							// Request the Logs
+							tr := &http.Transport{
+								MaxIdleConns:       10,
+								IdleConnTimeout:    30 * time.Second,
+								DisableCompression: true,
+							}
+							logsClient := &http.Client{Transport: tr}
+							reqLogs, err := http.NewRequest("GET", logsUrl, nil)
+							if err != nil {
+								log.Fatal(err)
+							}
+							// Set the header to define the Travis API version
+							//reqLogs.Header.Add("Accept", "application/json; version=3")
+							reqLogs.Header.Add("Accept", "text/plain; version=3")
+							reqLogs.Header.Add("Authorization", "token "+*travisTokenPtr)
+							respLogs, err := logsClient.Do(reqLogs)
+							if err != nil {
+								log.Fatal(err)
+							}
+							// Better use a buffer this time as we have to otherwise copy the whole byte array to conver it to string
+							//bodyLogs, err := ioutil.ReadAll(respLogs.Body)
+							bodyBuffer := new(bytes.Buffer)
+							bodyBuffer.ReadFrom(respLogs.Body)
+							bodyString := bodyBuffer.String()
 
-					// Write each log to file of format "repositoryID-buildID-logID.log"
-					logFile, err := os.Create(strconv.Itoa(build.RepositoryID) + "-" + strconv.Itoa(build.ID) + "-" + logString + ".log")
-					if err != nil {
-						log.Fatal(err)
-					}
-					logLength, err := logFile.WriteString(bodyString)
-					if err != nil {
-						log.Fatal(err)
-						logFile.Close()
-					}
-					fmt.Println(logLength, "bytes written successfully")
+							// Write each log to file of format "repositoryID-buildID-logID.log"
+							logFile, err := os.Create(strconv.Itoa(build.RepositoryID) + "-" + strconv.Itoa(build.ID) + "-" + logString + ".log")
+							if err != nil {
+								log.Fatal(err)
+							}
+							logLength, err := logFile.WriteString(bodyString)
+							if err != nil {
+								log.Fatal(err)
+								logFile.Close()
+							}
+							fmt.Println(logLength, "bytes written successfully")
 
-				}
+						}(index)
+					}
 
+				}(index)
 			}
+			wg.Wait()
 
 		}
 		// Uncomment to following to debug what you're getting back
