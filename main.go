@@ -155,6 +155,7 @@ func main() {
 					JobIds     []int     `json:"job_ids,omitempty"`
 				} `json:"builds"`
 			}
+			wg.Add(len(buildInfo.Builds))
 			for index, build := range buildInfo.Builds {
 				go func(index int) {
 					defer wg.Done()
