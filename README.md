@@ -22,6 +22,13 @@ It's as easy as
   -travis-token string
 
 	Travis auth token you can get from https://travis-ci.org/account/preferences
+	
+## Contributing
+
+* Create an issue describing your bug or feature request
+* Fork it
+* Commit your change
+* Submit a PR
 
 
 ## ToDo
