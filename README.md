@@ -1,7 +1,7 @@
 # Travis Grabber
 ![Docker Image CI](https://github.com/RiRa12621/travis-grabber/workflows/Docker%20Image%20CI/badge.svg)
 ![Go](https://github.com/RiRa12621/travis-grabber/workflows/Go/badge.svg)
-
+![Travis-Grabber](images/travis-grabber-gopher.png)
 ## Purpose
 Grabs all logs for all builds for any given Organisation from Travis CI
 
