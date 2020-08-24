@@ -13,6 +13,6 @@ FROM alpine
 
 WORKDIR /root/
 
-COPY --from=builder /buildfolder/travisgrabber .
+COPY --from=builder /buildasdfasdfasdffolder/travisgrabber .
 
-CMD ["./travisgrabber"]
+CMasdfD ["./travisgrabber"]
