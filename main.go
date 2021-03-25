@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -44,13 +43,20 @@ type BuildItem struct {
 }
 
 func main() {
+	// Make our logs easily consumable
+	log.SetFormatter(&log.JSONFormatter{})
 	// List the command line flags and assign them to pointers
 	orgPtr := flag.String("org", "", "the org to scan (this is case sensitive)")
 	tokenPtr := flag.String("github-token", "", "GitHub oAuth token used for authentication with GitHub to not instantly get rate limited")
 	travisTokenPtr := flag.String("travis-token", "", "Travis auth token you can get from https://travis-ci.org/account/preferences")
 	expandUsersPtr := flag.Bool("expand", true, "By default travis-grabber expands to all mebers of an org, set to false to disable")
+	debugPtr := flag.Bool("debug", false, "enable debug logging")
 	// Parse the flags
 	flag.Parse()
+	// check if we want debug logs
+	if *debugPtr == true {
+		log.SetLevel(log.DebugLevel)
+	}
 	// Make sure org and token are set
 	if *orgPtr == "" {
 		log.Fatal("You have to specify an org to scan!")
@@ -64,7 +70,6 @@ func main() {
 	// Print what we got so we know what we're scanning
 	log.Info("Org to scan on Travis CI:", *orgPtr)
 	// define wg
-	var wg sync.WaitGroup
 	// Set context
 	ctx := context.Background()
 	// Authenticate
@@ -115,6 +120,7 @@ func main() {
 		}
 		optRepos.Page = resp.NextPage
 	}
+	log.Debug(len(allRepos))
 	log.Info("Collected Org Repos")
 	// If expanding is true, add all user repos too
 	if *expandUsersPtr == true {
@@ -130,6 +136,7 @@ func main() {
 			optRepos.Page = resp.NextPage
 		}
 	}
+	log.Debug(len(allRepos))
 	log.Info("Collected User Repos")
 	// Remove comment to print the repos we have
 	log.Debug(allRepos)
@@ -194,67 +201,59 @@ func main() {
 					JobIds     []int     `json:"job_ids,omitempty"`
 				} `json:"builds"`
 			}
-			wg.Add(len(buildInfo.Builds))
-			for index, build := range buildInfo.Builds {
-				go func(index int) {
-					defer wg.Done()
-					log.Info("Gathering Jobs")
-					log.Info("Build:", build.ID)
-					log.Info("RepositoryID:", build.RepositoryID)
-					// Request the logs for each build and dump them to files
-					for index, job := range build.JobIds {
-						go func(index int) {
-							defer wg.Done()
-							// Print the Jobs IDs
-							log.Info("JobID:", strconv.Itoa(job))
-							logString := strconv.Itoa(job)
-							baseUrl := "https://api.travis-ci.org/v3/job/"
-							logsPostfix := "/log.txt"
-							logsUrl := baseUrl + logString + logsPostfix
-							// Let the user know from where we're getting the logs
-							log.Info("Requesting logs from:", logsUrl)
+			for _, build := range buildInfo.Builds {
+				log.Info("Gathering Jobs")
+				log.Info("Build:", build.ID)
+				log.Info("RepositoryID:", build.RepositoryID)
+				// Request the logs for each build and dump them to files
+				for _, job := range build.JobIds {
+					// Print the Jobs IDs
+					log.Info("JobID:", strconv.Itoa(job))
+					logString := strconv.Itoa(job)
+					baseUrl := "https://api.travis-ci.org/v3/job/"
+					logsPostfix := "/log.txt"
+					logsUrl := baseUrl + logString + logsPostfix
+					// Let the user know from where we're getting the logs
+					log.Info("Requesting logs from:", logsUrl)
 
-							// Request the Logs
-							tr := &http.Transport{
-								MaxIdleConns:       10,
-								IdleConnTimeout:    30 * time.Second,
-								DisableCompression: true,
-							}
-							logsClient := &http.Client{Transport: tr}
-							reqLogs, err := http.NewRequest("GET", logsUrl, nil)
-							if err != nil {
-								log.Fatal(err)
-							}
-							// Set the header to define the Travis API version
-							reqLogs.Header.Add("Accept", "text/plain; version=3")
-							reqLogs.Header.Add("Authorization", "token "+*travisTokenPtr)
-							respLogs, err := logsClient.Do(reqLogs)
-							if err != nil {
-								log.Fatal(err)
-							}
-							// Better use a buffer this time as we have to otherwise copy the whole byte array to conver it to string
-							bodyBuffer := new(bytes.Buffer)
-							bodyBuffer.ReadFrom(respLogs.Body)
-							bodyString := bodyBuffer.String()
-
-							// Write each log to file of format "repositoryID-buildID-logID.log"
-							logFile, err := os.Create(strconv.Itoa(build.RepositoryID) + "-" + strconv.Itoa(build.ID) + "-" + logString + ".log")
-							if err != nil {
-								log.Fatal(err)
-							}
-							logLength, err := logFile.WriteString(bodyString)
-							if err != nil {
-								log.Fatal(err)
-								logFile.Close()
-							}
-							log.Info(logLength, "bytes written successfully")
-
-						}(index)
+					// Request the Logs
+					tr := &http.Transport{
+						MaxIdleConns:       10,
+						IdleConnTimeout:    30 * time.Second,
+						DisableCompression: true,
 					}
+					logsClient := &http.Client{Transport: tr}
+					reqLogs, err := http.NewRequest("GET", logsUrl, nil)
+					if err != nil {
+						log.Fatal(err)
+					}
+					// Set the header to define the Travis API version
+					reqLogs.Header.Add("Accept", "text/plain; version=3")
+					reqLogs.Header.Add("Authorization", "token "+*travisTokenPtr)
+					respLogs, err := logsClient.Do(reqLogs)
+					if err != nil {
+						log.Fatal(err)
+					}
+					// Better use a buffer this time as we have to otherwise copy the whole byte array to conver it to string
+					bodyBuffer := new(bytes.Buffer)
+					bodyBuffer.ReadFrom(respLogs.Body)
+					bodyString := bodyBuffer.String()
 
-				}(index)
+					// Write each log to file of format "repositoryID-buildID-logID.log"
+					logFile, err := os.Create(strconv.Itoa(build.RepositoryID) + "-" + strconv.Itoa(build.ID) + "-" + logString + ".log")
+					if err != nil {
+						log.Fatal(err)
+					}
+					logLength, err := logFile.WriteString(bodyString)
+					if err != nil {
+						log.Fatal(err)
+						logFile.Close()
+					}
+					log.Info(logLength, "bytes written successfully")
+
+				}
+
 			}
-			wg.Wait()
 
 		}
 		// Uncomment to following to debug what you're getting back
