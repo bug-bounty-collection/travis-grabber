@@ -94,7 +94,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			orgMembers = append(orgMembers, users)
+			orgMembers = append(orgMembers, users...)
 			if resp.NextPage == 0 {
 				break
 			}
@@ -117,7 +117,7 @@ func main() {
 	}
 	if *expandUsersPtr == true {
 		for _, user := range orgMembers {
-			repos, resp, err := client.Repositories.List(ctx, user.GetID, optUserRepo)
+			repos, resp, err := client.Repositories.List(ctx, user.GetLogin(), optUserRepo)
 			if err != nil {
 				log.Fatal(err)
 			}
