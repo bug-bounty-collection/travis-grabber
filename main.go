@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/google/go-github/github"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -48,7 +48,7 @@ func main() {
 	orgPtr := flag.String("org", "", "the org to scan (this is case sensitive)")
 	tokenPtr := flag.String("github-token", "", "GitHub oAuth token used for authentication with GitHub to not instantly get rate limited")
 	travisTokenPtr := flag.String("travis-token", "", "Travis auth token you can get from https://travis-ci.org/account/preferences")
-	expandUsersPtr := flag.String("expand", true, "By default travis-grabber expands to all mebers of an org, set to false to disable")
+	expandUsersPtr := flag.Bool("expand", true, "By default travis-grabber expands to all mebers of an org, set to false to disable")
 	// Parse the flags
 	flag.Parse()
 	// Make sure org and token are set
@@ -90,7 +90,7 @@ func main() {
 	var orgMembers []*github.User
 	if *expandUsersPtr == true {
 		for {
-			users, resp, err := client.Orgs.ListMembers(ctx, *orgPtr, optUsers)
+			users, resp, err := client.Organizations.ListMembers(ctx, *orgPtr, optUsers)
 			if err != nil {
 				log.Fatal(err)
 			}
