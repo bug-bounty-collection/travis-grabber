@@ -115,6 +115,8 @@ func main() {
 		}
 		optRepos.Page = resp.NextPage
 	}
+	log.Info("Collected Org Repos")
+	// If expanding is true, add all user repos too
 	if *expandUsersPtr == true {
 		for _, user := range orgMembers {
 			repos, resp, err := client.Repositories.List(ctx, user.GetLogin(), optUserRepo)
@@ -128,7 +130,7 @@ func main() {
 			optRepos.Page = resp.NextPage
 		}
 	}
-	log.Info("Collected Org Repos")
+	log.Info("Collected User Repos")
 	// Remove comment to print the repos we have
 	log.Debug(allRepos)
 
