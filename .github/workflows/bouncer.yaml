@@ -1,0 +1,20 @@
+name: License Bouncer Check
+
+on: [push, pull_request]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Install Bouncer
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/wagoodman/go-bouncer/master/bouncer.sh | sh
+
+    - name: Check Dependency Licenses with Bouncer
+      run: |
+        ./bin/bouncer check
