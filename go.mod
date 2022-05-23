@@ -1,6 +1,6 @@
 module github.com/bug-bounty-collection/travis-grabber
 
-go 1.17
+go 1.18
 
 require (
 	github.com/google/go-github v17.0.0+incompatible
@@ -12,7 +12,7 @@ require (
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	golang.org/x/net v0.0.0-20200822124328-c89045814202 // indirect
-	golang.org/x/sys v0.0.0-20200803210538-64077c9b5642 // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
